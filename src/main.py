@@ -492,6 +492,15 @@ class FantasyProcessor:
                             success_tournaments = [t_type for t_type, result in tournament_results.items() if result]
                             if success_tournaments:
                                 success_log(f"Account {account_number}: Successfully registered in {', '.join(success_tournaments)} tournaments")
+                                # Store the tournament registration information
+                                api.account_storage.update_tournament_registration(wallet_address, success_tournaments)
+                                
+                                # Update info in results.txt with tournament registration
+                                update_info = api.info(token, wallet_address, account_number)
+                                if isinstance(update_info, str) and "429" in update_info:
+                                    info_log(f'Rate limit on info update after tournament registration, continuing...')
+                                elif update_info:
+                                    success_log(f"Account {account_number}: Updated info with tournament registration")
                             
                             failed_tournaments = [t_type for t_type, result in tournament_results.items() if not result]
                             if failed_tournaments:

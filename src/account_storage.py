@@ -46,6 +46,35 @@ class AccountStorage:
         
         self._save_data()
 
+    def update_tournament_registration(self, address: str, tournament_types: list):
+        """
+        Updates tournament registration information for an account
+        
+        Args:
+            address: The wallet address of the account
+            tournament_types: List of tournament types the account is registered in (e.g. ["bronze", "silver"])
+        """
+        if address in self.data:
+            account_data = self.data[address]
+            account_data["registered_tournaments"] = tournament_types
+            account_data["tournament_registration_time"] = datetime.now(pytz.UTC).isoformat()
+            self._save_data()
+            
+    def get_registered_tournaments(self, address: str) -> list:
+        """
+        Gets the list of tournaments an account is registered in
+        
+        Args:
+            address: The wallet address of the account
+            
+        Returns:
+            List of tournament types the account is registered in
+        """
+        account_data = self.get_account_data(address)
+        if account_data and "registered_tournaments" in account_data:
+            return account_data["registered_tournaments"]
+        return []
+
     def get_account_data(self, address: str) -> Optional[Dict]:
         return self.data.get(address)
 

@@ -23,8 +23,8 @@ class TokenManager:
     def __init__(self, account_storage, api_instance):
         self.account_storage = account_storage
         self.api = api_instance
-        self.max_retries = 2
-        self.rate_limit_delay = 3
+        self.max_retries = 10
+        self.rate_limit_delay = 10
         self.stored_credentials_failed = set()
 
     def validate_token(self, token: str) -> bool:
@@ -2242,11 +2242,21 @@ class FantasyAPI:
                     with open(result_file, 'r', encoding='utf-8') as f:
                         for line in f:
                             parts = line.strip().split(':')
-                            if len(parts) > 0:
+                            if len(parts) > 1:  # Make sure we have at least 2 parts (private_key and wallet_address)
+                                # In the new format, wallet_address is the second part
+                                addr = parts[1]
+                                existing_data[addr] = line.strip()
+                            elif len(parts) > 0:
+                                # Handle old format where wallet_address is the first part
                                 addr = parts[0]
                                 existing_data[addr] = line.strip()
 
+                # Get private key from account storage
+                account_data = self.account_storage.get_account_data(wallet_address)
+                private_key = account_data.get("private_key", "") if account_data else ""
+
                 result_parts = [
+                    f"{private_key}",
                     f"{wallet_address}",
                     f"stars={player_data.get('stars', 0)}",
                     f'gold="{gold_value}"',
@@ -2259,6 +2269,11 @@ class FantasyAPI:
                     f"gliding_score={total_gliding_score:.2f}",
                     f"rewards={rewards_status}"
                 ]
+                
+                # Add registered tournament information
+                registered_tournaments = self.account_storage.get_registered_tournaments(wallet_address)
+                if registered_tournaments:
+                    result_parts.append(f"registered_in_tournament={','.join(registered_tournaments)}")
                 
                 if has_tournament_rewards:
                     result_parts.append(f"tournament_rewards={tournament_rewards_data}")
@@ -2290,7 +2305,7 @@ class FantasyAPI:
                     all_lines = []
                     with open(result_file, 'r', encoding='utf-8') as read_f:
                         for line in read_f:
-                            if line.strip().startswith(wallet_address + ":"):
+                            if line.strip().startswith(wallet_address + ":") or (private_key and line.strip().startswith(private_key + ":")):
                                 all_lines.append(result_line + '\n')
                             else:
                                 all_lines.append(line)

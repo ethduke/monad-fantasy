@@ -42,10 +42,21 @@ def parse_result_file(file_path):
             parts = line.split(':')
             if len(parts) < 2:
                 continue
-                
-            account = {'address': parts[0]}
             
-            for part in parts[1:]:
+            # Check if the first part looks like a private key (starts with 0x and is 64-66 chars)
+            if parts[0].startswith('0x') and (len(parts[0]) == 66 or len(parts[0]) == 64):
+                # New format: private_key:address:data
+                account = {
+                    'private_key': parts[0],
+                    'address': parts[1]
+                }
+                start_idx = 2  # Start parsing key=value pairs from the third element
+            else:
+                # Old format: address:data (no private key)
+                account = {'address': parts[0]}
+                start_idx = 1  # Start parsing key=value pairs from the second element
+            
+            for part in parts[start_idx:]:
                 if '=' in part:
                     key, value = part.split('=', 1)
                     try:
@@ -89,6 +100,7 @@ def analyze_accounts(accounts):
     accounts_with_packs = sum(1 for account in accounts if 'packs' in account)
     accounts_with_active_tournaments = sum(1 for account in accounts if 'active_tournaments' in account)
     accounts_with_whitelist_tickets = sum(1 for account in accounts if account.get('whitelist_tickets', 0) > 0)
+    accounts_with_registered_tournaments = sum(1 for account in accounts if 'registered_in_tournament' in account)
     
     print_header("ACCOUNT SUMMARY")
     print(f"{Fore.GREEN}Total accounts: {Fore.WHITE}{total_accounts}")
@@ -113,6 +125,7 @@ def analyze_accounts(accounts):
     print(f"{Fore.GREEN}Accounts with pending packs: {Fore.WHITE}{accounts_with_pending_packs} ({accounts_with_pending_packs / total_accounts * 100:.2f}%)")
     print(f"{Fore.GREEN}Accounts with packs: {Fore.WHITE}{accounts_with_packs} ({accounts_with_packs / total_accounts * 100:.2f}%)")
     print(f"{Fore.GREEN}Accounts with active tournaments: {Fore.WHITE}{accounts_with_active_tournaments} ({accounts_with_active_tournaments / total_accounts * 100:.2f}%)")
+    print(f"{Fore.GREEN}Accounts with registered tournaments: {Fore.WHITE}{accounts_with_registered_tournaments} ({accounts_with_registered_tournaments / total_accounts * 100:.2f}%)")
     print(f"{Fore.GREEN}Accounts with whitelist tickets: {Fore.WHITE}{accounts_with_whitelist_tickets} ({accounts_with_whitelist_tickets / total_accounts * 100:.2f}%)")
     
     if accounts_with_rewards > 0:
@@ -146,6 +159,12 @@ def analyze_accounts(accounts):
             tickets = account.get('whitelist_tickets', 0)
             if tickets > 0:
                 print(f"{Fore.YELLOW}Address: {Fore.WHITE}{account['address']} {Fore.YELLOW}Tickets: {Fore.WHITE}{tickets}")
+    
+    if accounts_with_registered_tournaments > 0:
+        print_header("ACCOUNTS REGISTERED IN TOURNAMENTS")
+        for account in accounts:
+            if 'registered_in_tournament' in account:
+                print(f"{Fore.YELLOW}Address: {Fore.WHITE}{account['address']} {Fore.YELLOW}Tournaments: {Fore.WHITE}{account['registered_in_tournament']}")
     
     print_header("TOP 5 ACCOUNTS BY FANTASY POINTS")
     sorted_by_points = sorted(accounts, key=lambda x: x.get('fantasy_points', 0), reverse=True)
