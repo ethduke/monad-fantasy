@@ -65,7 +65,7 @@ class TournamentManager:
                 )
                 
                 if response.status_code == 429:
-                    info_log(f"Rate limit hit while fetching cards for account {account_number}, retrying...")
+                    info_log(f"Rate limit hit while fetching cards for account {account_number} {response.text}, retrying...")
                     continue
                 
                 if response.status_code == 401:

@@ -19,6 +19,49 @@ import time
 import traceback
 
 
+# Add a specialized retry decorator for handling nonce rate limits
+def retry_on_nonce_rate_limit(max_retries=30):
+    """
+    Decorator to retry functions when encountering nonce rate limit errors.
+    Uses a fixed 15-second delay between retries and changes proxy for each retry.
+    
+    Args:
+        max_retries (int): Maximum number of retry attempts (default: 30)
+        
+    Returns:
+        Decorator function
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            retries = 0
+            # Get a reference to the API instance (assumed to be the first arg for methods)
+            api_instance = args[0] if args and hasattr(args[0], 'all_proxies') else None
+            
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    error_message = str(e)
+                    if "Rate limit hit during nonce" in error_message:
+                        retries += 1
+                        info_log(f"Rate limit hit during nonce. Waiting 15 seconds before retry {retries}/{max_retries}...")
+                        time.sleep(15)  # Fixed 15-second delay as requested
+                        
+                        # Change proxy if we have access to the api instance
+                        if api_instance and hasattr(api_instance, 'all_proxies'):
+                            proxy = random.choice(api_instance.all_proxies)
+                            api_instance.proxies = {"http": proxy, "https": proxy}
+                            info_log(f"Switching proxy after nonce rate limit in decorator")
+                            
+                        continue
+                    # Re-raise any other exceptions
+                    raise
+            # If we've exhausted all retries, raise a custom exception
+            raise Exception(f"Failed after {max_retries} attempts due to nonce rate limiting")
+        return wrapper
+    return decorator
+
+
 class TokenManager:
     def __init__(self, account_storage, api_instance):
         self.account_storage = account_storage
@@ -261,19 +304,31 @@ class FantasyAPI:
                         continue
 
                 debug_log(f"Requesting nonce for account {account_number}")
-                init_response = self.session.post(
-                    'https://auth.privy.io/api/v1/siwe/init', 
-                    json={'address': wallet_address, 'token': captcha_token},
-                    headers=self.session.headers,
-                    proxies=self.proxies,
-                    timeout=10
-                )
                 
-                if init_response.status_code == 429:
-                    info_log(f"Rate limit hit during nonce request for account {account_number}")
-                    sleep(retry_delay)
-                    continue
+                # Handle nonce requests with potential rate limiting
+                while True:
+                    init_response = self.session.post(
+                        'https://auth.privy.io/api/v1/siwe/init', 
+                        json={'address': wallet_address, 'token': captcha_token},
+                        headers=self.session.headers,
+                        proxies=self.proxies,
+                        timeout=10
+                    )
                     
+                    if init_response.status_code == 429:
+                        info_log(f"Rate limit hit during nonce request for account {account_number} {init_response.text}")
+                        # Wait for 15 seconds as requested before retrying
+                        time.sleep(15)
+                        # Change proxy before retry
+                        proxy = random.choice(self.all_proxies)
+                        self.proxies = {"http": proxy, "https": proxy}
+                        info_log(f"Switching proxy for account {account_number} after nonce rate limit")
+                        continue  # Continue the inner loop to retry this specific request
+                    else:
+                        # Break the inner loop if we didn't hit a rate limit
+                        break
+                
+                # Continue with regular error handling for other status codes    
                 if init_response.status_code != 200:
                     info_log(f"Failed to get nonce, status: {init_response.status_code}")
                     captcha_token = self._get_captcha_token()
@@ -363,7 +418,16 @@ class FantasyAPI:
 
             except Exception as e:
                 error_log(f'Error during login attempt {attempt + 1}: {str(e)}')
-                if attempt < max_retries - 1:
+                # Also handle rate limit errors that might be raised as exceptions
+                if "Rate limit hit during nonce" in str(e):
+                    info_log(f"Rate limit hit during nonce request for account {account_number}. Waiting 15 seconds...")
+                    time.sleep(15)
+                    # Change proxy before retry
+                    proxy = random.choice(self.all_proxies)
+                    self.proxies = {"http": proxy, "https": proxy}
+                    info_log(f"Switching proxy for account {account_number} after nonce rate limit exception")
+                    continue
+                elif attempt < max_retries - 1:
                     sleep(retry_delay)
                     continue
 
