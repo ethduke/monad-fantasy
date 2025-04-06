@@ -6,6 +6,18 @@ Automated tool for managing Fantasy accounts on Monad.
 * Telegram: @one_lock
 * Twitter/X: [@1l0ck](https://x.com/1l0ck)
 
+## Recent Updates
+### Enhanced Nonce Rate Limit Handling
+- Added retry decorator for nonce rate limit errors
+- Implemented proxy rotation after each rate limit hit
+- Set fixed 15-second delay between retries
+- Added detailed logging for rate limit events
+
+### Public Key Derivation
+- Added automatic public key derivation from private keys
+- Improved key management system
+- Enhanced security by reducing manual key handling
+
 ## Description
 This script automates the processes of authorization and performing daily tasks for multiple Fantasy accounts. Main features:
 - Authorization via private key
