@@ -1,8 +1,7 @@
 import uuid
 import time
 import random
-from typing import List, Dict, Optional, Tuple
-from colorama import Fore
+from typing import List, Dict, Tuple
 from .utils import error_log, success_log, info_log, debug_log
 
 class TournamentManager:
@@ -243,8 +242,9 @@ class TournamentManager:
                 'Priority': 'u=1, i'
             }
             
-            max_registration_retries = 3
+            max_registration_retries = 5
             retry_delay = 2
+            timeout_duration = 15
             
             for retry_attempt in range(max_registration_retries):
                 try:
@@ -272,6 +272,11 @@ class TournamentManager:
                     except Exception:
                         debug_log(f"Non-JSON response: {response.text}")
                     
+                    if response.status_code == 400:
+                        info_log(f"Response ... {response.text}")
+                        time.sleep(retry_delay)
+                        continue
+
                     if response.status_code == 429:
                         info_log(f"Rate limit hit during tournament registration for account {account_number}, retrying ({retry_attempt+1}/{max_registration_retries})...")
                         time.sleep(retry_delay)
@@ -301,11 +306,22 @@ class TournamentManager:
                         error_log(f"Error during tournament registration attempt {retry_attempt+1}: {str(e)}, retrying...")
                         time.sleep(retry_delay)
                     else:
-                        error_log(f"Final error registering for tournament: {str(e)}")
-                        return False
-                    
-            error_log(f"Failed to register for tournament after {max_registration_retries} attempts")
-            return False
+                        error_log(f"Error during tournament registration attempt {retry_attempt+1}: {str(e)}")
+            
+            # After 3 retries, rotate proxy and wait before trying again
+            info_log(f"Failed to register for tournament after {max_registration_retries} attempts. Rotating proxy and waiting {timeout_duration} seconds...")
+            
+            # Rotate proxy if available
+            if hasattr(self.api, 'rotate_proxy') and callable(getattr(self.api, 'rotate_proxy')):
+                self.api.rotate_proxy()
+                info_log(f"Proxy rotated for account {account_number}")
+            else:
+                info_log(f"Proxy rotation not available for account {account_number}")
+            
+            # Wait for the specified timeout
+            time.sleep(timeout_duration)
+                
+                # Continue the outer loop to try again
                 
         except Exception as e:
             error_log(f"Error registering for tournament: {str(e)}")

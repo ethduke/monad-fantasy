@@ -41,7 +41,7 @@
     },
     "capmonster": {
         "enabled": true,
-        "api_key": "YOUR_KEY"
+        "api_key": ""
     },
     "2captcha": {
         "enabled": false,
@@ -65,9 +65,9 @@
         "enabled": true,
         "buy_packs": true,
         "claim_immediately": true,
-        "pack_type": "violet",
+        "pack_type": "sapphire",
         "specific_quantity": 1,
-        "use_all_fragments": false,
+        "use_all_fragments": true,
         "pack_types": {
             "violet": {
                 "id": "fa42e35e-611e-44de-90e7-819675d523e4",
@@ -123,27 +123,27 @@
     "retry_failed_accounts": true,
     "info_check": true,
     "tournaments": {
-        "enabled": false,
+        "enabled": true,
         "claim_rewards": true,
         "types": {
             "bronze": {
                 "enabled": false,
-                "id": "735aa837-1505-4887-80e1-6a6387336a6b",
+                "id": "f7568cc7-8508-457b-b791-af8ce1bdd74d",
                 "max_stars": 18
             },
             "silver": {
                 "enabled": false,
-                "id": "3dc56849-6dfc-46ee-89df-ebb69c595990", 
+                "id": "b8b021e2-b65f-429e-b3c7-c33a3d7c5c74", 
                 "max_stars": 23
             },
             "gold": {
                 "enabled": false,
-                "id": "7a9c9d95-6301-4019-9a23-1289b7c7c05f",
+                "id": "7376c3e8-c02c-45c4-9218-b9cc44c0def8",
                 "max_stars": 25
             },
             "elite": {
-                "enabled": false,
-                "id": "1108865e-ddd8-4ac4-bf5f-6fa8586be323",
+                "enabled": true,
+                "id": "6137fd0a-7a26-48e5-b4ba-502046b5595f",
                 "max_stars": 999
             }
         }
